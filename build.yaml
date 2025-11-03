@@ -22,4 +22,4 @@ include:
   - board: nice_nano_v2
     shield: cradio_left
   - board: nice_nano_v2
-    shield: cradio_right
+    shield: cradio_right nice_view
