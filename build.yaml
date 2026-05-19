@@ -20,6 +20,6 @@
 ---
 include:
   - board: nice_nano_v2
-    shield: cradio nice_view_adapter nice_view_elemental
+    shield: cradio_left nice_view_adapter nice_view_elemental
   - board: nice_nano_v2
-    shield: cradio nice_view_adapter nice_view_elemental
+    shield: cradio_right nice_view_adapter nice_view_elemental
