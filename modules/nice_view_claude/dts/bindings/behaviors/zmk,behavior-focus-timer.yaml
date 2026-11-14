@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MIT
+
+description: Toggle the nice_view_claude focus (Pomodoro) timer
+
+compatible: "zmk,behavior-focus-timer"
+
+include: zero_param.yaml

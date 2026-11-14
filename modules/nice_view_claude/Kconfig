@@ -1,0 +1,65 @@
+# Copyright (c) 2023 The ZMK Contributors
+# SPDX-License-Identifier: MIT
+#
+# Based on zzeneg/zmk-nice-view-hid (9bee6b9). The time and keyboard-layout rows
+# are replaced by Claude plan usage (5-hour and 7-day windows) sent over Raw HID.
+
+config NICE_VIEW_CLAUDE
+    bool "Enable nice!view display with Claude usage over Raw HID"
+    imply ZMK_DISPLAY
+    select LV_USE_IMG
+    select LV_USE_CANVAS
+    select LV_FONT_MONTSERRAT_12
+    select LV_FONT_MONTSERRAT_18
+    select LV_FONT_MONTSERRAT_22
+
+config NICE_VIEW_CLAUDE_HORIZONTAL
+    bool "Horizontal view"
+    default n
+
+config NICE_VIEW_CLAUDE_INVERTED
+    bool "Invert widget colors"
+
+config NICE_VIEW_CLAUDE_SWAP_PERIPHERALS
+    bool "Swap L/R battery labels"
+    help
+      The dongle numbers the halves in the order they first paired, not by side.
+      Enable this if the L and R battery levels are shown the wrong way round.
+
+config NICE_VIEW_CLAUDE_FOCUS_MINUTES
+    int "Focus timer: focus session length (minutes)"
+    default 25
+    range 1 240
+
+config NICE_VIEW_CLAUDE_BREAK_MINUTES
+    int "Focus timer: break length (minutes)"
+    default 5
+    range 1 120
+
+if NICE_VIEW_CLAUDE
+
+config LV_DPI_DEF
+    default 161
+
+config LV_Z_VDB_SIZE
+    default 100
+
+config LV_Z_BITS_PER_PIXEL
+    default 1
+
+config LV_Z_MEM_POOL_SIZE
+    default 4096
+
+choice LV_COLOR_DEPTH
+    default LV_COLOR_DEPTH_1
+endchoice
+
+choice ZMK_DISPLAY_WORK_QUEUE
+    default ZMK_DISPLAY_WORK_QUEUE_DEDICATED
+endchoice
+
+choice ZMK_DISPLAY_STATUS_SCREEN
+    default ZMK_DISPLAY_STATUS_SCREEN_CUSTOM
+endchoice
+
+endif

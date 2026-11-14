@@ -1,3 +1,7 @@
+name: zmk-config
 build:
+  cmake: modules/nice_view_claude
+  kconfig: modules/nice_view_claude/Kconfig
   settings:
     board_root: .
+    dts_root: modules/nice_view_claude
