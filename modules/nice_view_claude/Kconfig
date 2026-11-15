@@ -32,9 +32,19 @@ config NICE_VIEW_CLAUDE_FOCUS_MINUTES
     range 1 240
 
 config NICE_VIEW_CLAUDE_BREAK_MINUTES
-    int "Focus timer: break length (minutes)"
+    int "Focus timer: short break length (minutes)"
     default 5
     range 1 120
+
+config NICE_VIEW_CLAUDE_LONG_BREAK_MINUTES
+    int "Focus timer: long break length (minutes)"
+    default 30
+    range 1 240
+
+config NICE_VIEW_CLAUDE_LONG_BREAK_EVERY
+    int "Focus timer: long break after every N completed sessions of the day"
+    default 4
+    range 1 20
 
 if NICE_VIEW_CLAUDE
 

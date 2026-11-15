@@ -13,12 +13,12 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/battery.h>
 #include <zmk/display.h>
 #include "status.h"
+#include "eye.h"
 #include <zmk/events/usb_conn_state_changed.h>
 #include <zmk/event_manager.h>
 #include <zmk/events/battery_state_changed.h>
 #include <zmk/events/ble_active_profile_changed.h>
 #include <zmk/events/endpoint_changed.h>
-#include <zmk/events/layer_state_changed.h>
 #include <zmk/usb.h>
 #include <zmk/ble.h>
 #include <zmk/endpoints.h>
@@ -33,7 +33,6 @@ enum widget_children {
     WIDGET_TOP = 0,
     WIDGET_HID,
     WIDGET_MIDDLE,
-    WIDGET_BOTTOM,
 };
 
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
@@ -45,10 +44,11 @@ struct output_status_state {
     bool active_profile_bonded;
 };
 
-struct layer_status_state {
-    zmk_keymap_layer_index_t index;
-    const char *label;
-};
+// Flaming eye shown in the middle section while the focus timer is idle.
+// Only the first EYE_ROWS rows of the middle canvas are on screen.
+#define EYE_ROWS 64
+BUILD_ASSERT(sizeof(lv_color_t) == 1, "eye rendering assumes 1-byte (1-bit) colours");
+static struct eye_state eye;
 
 static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
     lv_obj_t *canvas = lv_obj_get_child(widget, WIDGET_TOP);
@@ -177,39 +177,47 @@ static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status
 
     lv_draw_rect_dsc_t rect_black_dsc;
     init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
-    lv_draw_rect_dsc_t rect_white_dsc;
-    init_rect_dsc(&rect_white_dsc, LVGL_FOREGROUND);
-    lv_draw_arc_dsc_t arc_dsc;
-    init_arc_dsc(&arc_dsc, LVGL_FOREGROUND, 2);
-    lv_draw_arc_dsc_t arc_dsc_filled;
-    init_arc_dsc(&arc_dsc_filled, LVGL_FOREGROUND, 9);
     lv_draw_label_dsc_t label_dsc;
     init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
-    lv_draw_label_dsc_t label_dsc_black;
-    init_label_dsc(&label_dsc_black, LVGL_BACKGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
 
     // Fill background
     lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
 
+    lv_draw_label_dsc_t label_small;
+    init_label_dsc(&label_small, LVGL_FOREGROUND, &lv_font_montserrat_12, LV_TEXT_ALIGN_CENTER);
+    char sessions[12];
+    snprintf(sessions, sizeof(sessions), "Today %u", state->focus_sessions_today);
+
     if (state->focus_phase != FOCUS_TIMER_IDLE) {
-        // Focus timer replaces the profile circle while running:
-        //   FOCUS / BREAK (12px)  over  mm:ss (18px)
-        lv_draw_label_dsc_t label_phase;
-        init_label_dsc(&label_phase, LVGL_FOREGROUND, &lv_font_montserrat_12, LV_TEXT_ALIGN_CENTER);
-        lv_canvas_draw_text(canvas, 0, 6, CANVAS_SIZE, &label_phase,
-                            state->focus_phase == FOCUS_TIMER_FOCUS ? "FOCUS" : "BREAK");
+        // Focus timer replaces the eye while running:
+        //   FOCUS / BREAK / LONG BRK (12px), mm:ss (18px), Today N (12px)
+        const char *phase_name = state->focus_phase == FOCUS_TIMER_FOCUS ? "FOCUS"
+                                 : state->focus_long_break                ? "LONG BRK"
+                                                                          : "BREAK";
+        lv_canvas_draw_text(canvas, 0, 6, CANVAS_SIZE, &label_small, phase_name);
 
         char remaining[8];
         snprintf(remaining, sizeof(remaining), "%u:%02u", state->focus_remaining_s / 60,
                  state->focus_remaining_s % 60);
         lv_canvas_draw_text(canvas, 0, 20, CANVAS_SIZE, &label_dsc, remaining);
-    } else {
-        // Draw circle
-        lv_canvas_draw_arc(canvas, 34, 25, 13, 0, 360, &arc_dsc);
 
-        char label[4];
-        snprintf(label, sizeof(label), "%i", state->active_profile_index + 1);
-        lv_canvas_draw_text(canvas, 26, 15, 16, &label_dsc, label);
+        lv_canvas_draw_text(canvas, 0, 46, CANVAS_SIZE, &label_small, sessions);
+    } else {
+        // Render the eye straight into the canvas buffer (1 byte per pixel),
+        // then map 0/1 to the background/foreground colours in place.
+        uint8_t *px = (uint8_t *)cbuf;
+        eye_render(&eye, px, CANVAS_SIZE, EYE_ROWS, CANVAS_SIZE);
+        const lv_color_t fg = LVGL_FOREGROUND;
+        const lv_color_t bg = LVGL_BACKGROUND;
+        for (int i = 0; i < EYE_ROWS * CANVAS_SIZE; i++) {
+            cbuf[i] = px[i] ? fg : bg;
+        }
+
+        // today's completed sessions under the eye (below its lowest flames)
+        if (state->focus_sessions_today > 0) {
+            lv_canvas_draw_rect(canvas, 0, 51, CANVAS_SIZE, EYE_ROWS - 51, &rect_black_dsc);
+            lv_canvas_draw_text(canvas, 0, 51, CANVAS_SIZE, &label_small, sessions);
+        }
     }
 
 #ifndef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
@@ -218,33 +226,20 @@ static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status
 #endif
 }
 
-#ifndef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
-static void draw_bottom(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
-    lv_obj_t *canvas = lv_obj_get_child(widget, WIDGET_BOTTOM);
+// Advances the eye animation; runs on the display work queue like the other redraws.
+static void eye_tick(struct k_work *work);
+static K_WORK_DELAYABLE_DEFINE(eye_work, eye_tick);
 
-    lv_draw_rect_dsc_t rect_black_dsc;
-    init_rect_dsc(&rect_black_dsc, LVGL_BACKGROUND);
-    lv_draw_label_dsc_t label_dsc;
-    init_label_dsc(&label_dsc, LVGL_FOREGROUND, &lv_font_montserrat_18, LV_TEXT_ALIGN_CENTER);
-
-    // Fill background
-    lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
-
-    // Draw layer
-    if (state->layer_label == NULL || strlen(state->layer_label) == 0) {
-        char text[10] = {};
-
-        sprintf(text, "LAYER %i", state->layer_index);
-
-        lv_canvas_draw_text(canvas, 0, 5, CANVAS_SIZE, &label_dsc, text);
-    } else {
-        lv_canvas_draw_text(canvas, 0, 5, CANVAS_SIZE, &label_dsc, state->layer_label);
+static void eye_tick(struct k_work *work) {
+    eye_step(&eye);
+    struct zmk_widget_status *widget;
+    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
+        if (widget->state.focus_phase == FOCUS_TIMER_IDLE) {
+            draw_middle(widget->obj, widget->cbuf2, &widget->state);
+        }
     }
-
-    // Rotate canvas
-    rotate_canvas(canvas, cbuf);
+    k_work_schedule_for_queue(zmk_display_work_q(), &eye_work, K_MSEC(1000 / EYE_FPS));
 }
-#endif
 
 // Keyboard halves' battery levels (the dongle's own battery is not shown).
 struct peripheral_battery_state {
@@ -287,6 +282,8 @@ static void focus_timer_update_cb(struct focus_timer_state_changed timer) {
     SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) {
         widget->state.focus_phase = timer.phase;
         widget->state.focus_remaining_s = timer.remaining_s;
+        widget->state.focus_long_break = timer.long_break;
+        widget->state.focus_sessions_today = timer.sessions_today;
         draw_middle(widget->obj, widget->cbuf2, &widget->state);
     }
 }
@@ -335,40 +332,6 @@ ZMK_SUBSCRIPTION(widget_output_status, zmk_usb_conn_state_changed);
 #if defined(CONFIG_ZMK_BLE)
 ZMK_SUBSCRIPTION(widget_output_status, zmk_ble_active_profile_changed);
 #endif
-
-static void set_layer_status(struct zmk_widget_status *widget, struct layer_status_state state) {
-    widget->state.layer_index = state.index;
-    widget->state.layer_label = state.label;
-
-#ifdef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
-    lv_obj_t *bottom = lv_obj_get_child(widget->obj, WIDGET_BOTTOM);
-    if (state.label == NULL || strlen(state.label) == 0) {
-        char text[10] = {};
-        sprintf(text, "LAYER %i", state.index);
-        lv_label_set_text(bottom, text);
-    } else {
-        lv_label_set_text(bottom, state.label);
-    }
-#else
-    draw_bottom(widget->obj, widget->cbuf3, &widget->state);
-#endif
-}
-
-static void layer_status_update_cb(struct layer_status_state state) {
-    struct zmk_widget_status *widget;
-    SYS_SLIST_FOR_EACH_CONTAINER(&widgets, widget, node) { set_layer_status(widget, state); }
-}
-
-static struct layer_status_state layer_status_get_state(const zmk_event_t *eh) {
-    zmk_keymap_layer_index_t index = zmk_keymap_highest_layer_active();
-    return (struct layer_status_state){
-        .index = index, .label = zmk_keymap_layer_name(zmk_keymap_layer_index_to_id(index))};
-}
-
-ZMK_DISPLAY_WIDGET_LISTENER(widget_layer_status, struct layer_status_state, layer_status_update_cb,
-                            layer_status_get_state)
-
-ZMK_SUBSCRIPTION(widget_layer_status, zmk_layer_state_changed);
 
 static struct is_connected_notification get_is_hid_connected(const zmk_event_t *eh) {
     struct is_connected_notification *notification = as_is_connected_notification(eh);
@@ -454,28 +417,23 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 46, 0);
     lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 20, -12);
-
-    lv_obj_t *bottom = lv_label_create(widget->obj);
-    lv_obj_align(bottom, LV_ALIGN_BOTTOM_RIGHT, 0, 3);
-    lv_obj_set_style_text_color(bottom, LVGL_FOREGROUND, 0);
 #else
     lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 64, 0);
     lv_obj_align(middle, LV_ALIGN_TOP_LEFT, -4, 0);
-
-    lv_obj_t *bottom = lv_canvas_create(widget->obj);
-    lv_obj_align(bottom, LV_ALIGN_TOP_LEFT, -44, 0);
-    lv_canvas_set_buffer(bottom, widget->cbuf3, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
 #endif
+
+    eye_init(&eye, k_cycle_get_32());
 
     sys_slist_append(&widgets, &widget->node);
     widget_peripheral_battery_init();
     widget_focus_timer_init();
     widget_output_status_init();
-    widget_layer_status_init();
     widget_is_connected_init();
     widget_volume_init();
     widget_claude_usage_init();
+
+    k_work_schedule_for_queue(zmk_display_work_q(), &eye_work, K_MSEC(1000 / EYE_FPS));
 
     return 0;
 }

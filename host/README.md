@@ -55,6 +55,7 @@ launchd agents from reading `~/Documents`. Re-run `host/install.sh` after editin
 | --- | --- |
 | `0xAB` | `[1]` volume 0–100 |
 | `0xC0` | `[1]` 5-hour % used, `[2]` 7-day % used (0–100, `0xFF` = unknown) |
+| `0xC1` | `[1..4]` local time in seconds since 1970-01-01, little endian. Sent every 20 s; the dongle uses it to know the date for the focus timer's daily count |
 
 The firmware shows "HID not found" if nothing arrives for 65 s. The sender sends a heartbeat
 every 20 s.

@@ -19,6 +19,8 @@ usage and a focus (Pomodoro) timer.
 | `boards/shields/nice_view_claude_adapter/` | Shield that enables the custom display widget |
 | `modules/nice_view_claude/` | Custom nice!view widget, based on [zmk-nice-view-hid](https://github.com/zzeneg/zmk-nice-view-hid) |
 | `host/` | macOS background sender that feeds volume and Claude usage to the dongle ([details](host/README.md)) |
+| `scripts/build.sh` | Builds the firmware locally with Docker (see [From the command line](#from-the-command-line)) |
+| `hardware/sauron-dongle/` | Printable Sauron tower dongle case: STLs, editable STEP, CAD source and assembly instructions |
 
 ## The display
 
@@ -33,10 +35,10 @@ The nice!view on the dongle, read top to bottom:
 │ 5h        19%  │     Claude: % of the 5-hour usage limit used
 │ 7d         4%  │     Claude: % of the weekly usage limit used
 ├────────────────┤
-│      (1)       │  ③ Bluetooth profile, or the focus timer while it runs:
-│                │       FOCUS 24:13 / BREAK 4:59
-├────────────────┤
-│ Default Layer  │  ④ active keymap layer
+│   /\/\/\/\/\   │  ③ flaming eye looking around, or the focus timer
+│  <(:::|::::)>  │     while it runs: FOCUS / BREAK / LONG BRK + mm:ss
+│   \/\/\/\/\/   │
+│    Today 3     │     focus sessions completed today
 └────────────────┘
 ```
 
@@ -57,14 +59,30 @@ The nice!view on the dongle, read top to bottom:
   - A limit shows `0%` once its reset time passes.
 - If nothing arrives from the Mac for 65 s, these three lines are replaced by **"HID not found"**.
 
-**③ Profile / focus timer**
-- Normally: the active Bluetooth profile number in a circle.
-- While the focus timer runs: `FOCUS` with a 25:00 countdown, then `BREAK` with 5:00.
-  - The timer runs on the dongle and resets if the dongle loses power.
-  - Change the lengths with `CONFIG_NICE_VIEW_CLAUDE_FOCUS_MINUTES` / `..._BREAK_MINUTES`.
+**③ Eye / focus timer**
+- Normally: a flaming, lidded eye.
+  - Its slit pupil wanders to random spots, pauses, and searches again.
+  - The flames flicker. The animation runs at 8 fps.
+  - Drawn in `modules/nice_view_claude/src/widgets/eye.c`.
+- While the focus timer runs: the phase and a countdown replace the eye.
+  - `FOCUS`: 25:00.
+  - `BREAK`: 5:00.
+  - `LONG BRK`: 30:00, after every 4th completed session of the day.
+- `Today N`: focus sessions completed today.
+  - Shown under the countdown, and under the eye once it's above 0.
+  - Only sessions that run the full 25 minutes count.
+  - The count is stored in the dongle's flash, so it survives power loss.
+  - It resets when the date changes. The dongle has no clock, so the Mac sender reports the local
+    time every 20 s.
+- A running countdown restarts from idle after a power loss; only the count is kept.
+- Settings in `config/cradio_dongle.conf`:
 
-**④ Layer**
-- The `display-name` of the active layer in `config/cradio.keymap`.
+  | Setting | Default |
+  | --- | --- |
+  | `CONFIG_NICE_VIEW_CLAUDE_FOCUS_MINUTES` | 25 |
+  | `CONFIG_NICE_VIEW_CLAUDE_BREAK_MINUTES` | 5 |
+  | `CONFIG_NICE_VIEW_CLAUDE_LONG_BREAK_MINUTES` | 30 |
+  | `CONFIG_NICE_VIEW_CLAUDE_LONG_BREAK_EVERY` | 4 |
 
 ## Keymap
 
@@ -72,21 +90,56 @@ The nice!view on the dongle, read top to bottom:
 | --- | --- | --- |
 | Default | – | QWERTY with home-row mods (Shift, Alt, Ctrl, GUI) |
 | Right | hold `Backspace` (right thumb) | Numbers, arrows, Home/End/PgUp/PgDn, Caps Word |
-| Left | hold `Tab` (left thumb) | Symbols and brackets |
+| Left | hold `Tab` (left thumb) | Symbols and brackets, **BREAK** |
 | Tri | hold both thumbs | F1–F12, media keys, Bluetooth profiles, reset, bootloader, **FOCUS** |
 
-**FOCUS** (Tri layer, bottom-left) starts the focus timer, or stops it while it runs.
+Focus timer keys, both on the `Z` position:
+
+| Key | Where | What it does |
+| --- | --- | --- |
+| **FOCUS** | Tri layer + `Z` | Starts a focus session; stops the timer while it runs |
+| **BREAK** | Left layer (hold `Tab`) + `Z` | Goes straight to a 5-minute break. The interrupted session isn't counted |
 
 ## Building and flashing
 
-Every push runs the GitHub Action, which builds these firmware files:
+There are four firmware files:
 
-- `cradio_left`, `cradio_right`: the two halves, both as peripherals.
-- `cradio_dongle nice_view_adapter nice_view_claude_adapter raw_hid_adapter`: the dongle.
-- `settings_reset`: clears stored Bluetooth pairings.
+| Target | Shield(s) | Flash it to |
+| --- | --- | --- |
+| `dongle` | `cradio_dongle nice_view_adapter nice_view_claude_adapter raw_hid_adapter` | the dongle |
+| `left`, `right` | `cradio_left` / `cradio_right`, built as peripherals | each half |
+| `reset` | `settings_reset` | any board, to clear stored Bluetooth pairings |
 
-To flash, double-tap reset on a nice!nano so it mounts as a USB drive, then copy its `.uf2` onto
-it. Keymap and display changes only need the dongle reflashed.
+Keymap and display changes only need the dongle reflashed.
+
+### On GitHub
+
+Every push runs the GitHub Action. The `.uf2` files are attached to the run as the `firmware`
+artifact.
+
+### From the command line
+
+Requires [Docker](https://www.docker.com/products/docker-desktop/), running. The script uses ZMK's
+build image, the same one the GitHub Action uses, so nothing else needs installing.
+
+```sh
+scripts/build.sh                # dongle only (default)
+scripts/build.sh left right     # one or more of: dongle, left, right, reset
+scripts/build.sh all            # all four
+```
+
+- **Output:** each build writes `firmware/<target>.uf2`. This folder is git-ignored.
+- **First run:** downloads ZMK, Zephyr and the modules (about 2 GB, several minutes) into
+  `~/.cache/zmk-workspace`. Set `ZMK_WORKSPACE` to use another folder.
+- **Later runs:** reuse that download and rebuild only what changed, which takes well under a
+  minute. The download only happens again after `config/west.yml` changes.
+
+To start from a completely clean build, delete `~/.cache/zmk-workspace/build`.
+
+### Flashing
+
+1. Double-tap the reset button on the nice!nano. It mounts as a USB drive (`NICENANO`).
+2. Copy the `.uf2` onto that drive. The board reboots by itself when the copy finishes.
 
 ### Wiring the nice!view to the dongle
 
@@ -99,6 +152,21 @@ it. Keymap and display changes only need the dongle reflashed.
 | GND | GND |
 
 Pin positions are counted from the USB end, with the component side facing you.
+
+## Printable tower case
+
+The [Sauron tower case](hardware/sauron-dongle/README.md) holds a 33 × 18 mm
+ProMicro nRF52840 flat in its base, with USB-C exiting the rear, and a 36 × 14 mm
+nice!view standing upright at 90° to it. The enclosure is 66 × 60 × 152 mm and
+has a removable controller tray and rear display cover.
+
+[Preview](hardware/sauron-dongle/preview.png) ·
+[Download the print pack](hardware/sauron-dongle/sauron-dongle-print-pack.zip)
+
+The pack includes three print-oriented STLs, a display fit gauge, editable STEP
+files and parametric CadQuery source. Geometry is digitally checked; physical fit
+still needs a trial with your boards. Print the tray and gauge first, and follow
+the hardware guide for supports, screws and wiring clearance.
 
 ## Mac companion
 

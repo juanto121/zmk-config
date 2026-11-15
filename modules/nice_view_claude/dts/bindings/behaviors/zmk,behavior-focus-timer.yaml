@@ -1,7 +1,15 @@
 # SPDX-License-Identifier: MIT
 
-description: Toggle the nice_view_claude focus (Pomodoro) timer
+description: |
+  nice_view_claude focus (Pomodoro) timer key.
+  Without start-break: start a focus session when idle, stop the timer otherwise.
+  With start-break: go straight to a short break.
 
 compatible: "zmk,behavior-focus-timer"
 
 include: zero_param.yaml
+
+properties:
+  start-break:
+    type: boolean
+    description: Start a short break instead of toggling the timer

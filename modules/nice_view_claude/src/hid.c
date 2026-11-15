@@ -1,4 +1,5 @@
 #include <nice_view_claude/hid.h>
+#include <nice_view_claude/focus_timer.h>
 #include <raw_hid/events.h>
 
 #include <zephyr/kernel.h>
@@ -13,6 +14,7 @@ ZMK_EVENT_IMPL(claude_usage_notification);
 typedef enum {
     _VOLUME = 0xAB, // matches qmk-hid-host
     _CLAUDE_USAGE = 0xC0,
+    _LOCAL_TIME = 0xC1, // [1..4] local epoch seconds, little endian
 } hid_data_type;
 
 static bool is_connected = false;
@@ -45,7 +47,7 @@ static uint8_t sanitize_percent(uint8_t value) {
 
 static void process_raw_hid_data(uint8_t *data) {
     uint8_t data_type = data[0];
-    if (data_type != _VOLUME && data_type != _CLAUDE_USAGE) {
+    if (data_type != _VOLUME && data_type != _CLAUDE_USAGE && data_type != _LOCAL_TIME) {
         // ignore other qmk-hid-host messages (time, layout, media, ...)
         return;
     }
@@ -76,6 +78,11 @@ static void process_raw_hid_data(uint8_t *data) {
             .five_hour = sanitize_percent(data[1]),
             .seven_day = sanitize_percent(data[2]),
         });
+        break;
+
+    case _LOCAL_TIME:
+        focus_timer_set_local_time((uint32_t)data[1] | (uint32_t)data[2] << 8 |
+                                   (uint32_t)data[3] << 16 | (uint32_t)data[4] << 24);
         break;
     }
 }

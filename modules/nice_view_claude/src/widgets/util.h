@@ -23,8 +23,6 @@ struct status_state {
     uint8_t active_profile_index;
     bool active_profile_connected;
     bool active_profile_bonded;
-    uint8_t layer_index;
-    const char *layer_label;
     bool is_connected;
     uint8_t volume;
     uint8_t usage_five_hour;
@@ -33,6 +31,8 @@ struct status_state {
     uint8_t battery_right;
     uint8_t focus_phase;    // enum focus_timer_phase
     uint16_t focus_remaining_s;
+    bool focus_long_break;
+    uint16_t focus_sessions_today;
 #else
     bool connected;
 #endif

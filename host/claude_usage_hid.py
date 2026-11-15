@@ -15,6 +15,7 @@ format the nice_view_claude firmware module expects:
 
     [0xAB, volume]                       volume 0..100
     [0xC0, five_hour_pct, seven_day_pct] 0..100, 0xFF = unknown
+    [0xC1, t0, t1, t2, t3]               local epoch seconds, little endian
 """
 
 import ctypes
@@ -44,6 +45,7 @@ REPORT_SIZE = 32
 
 MSG_VOLUME = 0xAB
 MSG_CLAUDE_USAGE = 0xC0
+MSG_LOCAL_TIME = 0xC1
 UNKNOWN = 0xFF
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
@@ -267,6 +269,12 @@ def open_device():
     return None
 
 
+def local_epoch_seconds():
+    """Seconds since 1970-01-01 in the Mac's local time zone (DST included)."""
+    now = time.time()
+    return int(now + time.localtime(now).tm_gmtoff) & 0xFFFFFFFF
+
+
 def send(dev, payload):
     report = bytes([0x00]) + bytes(payload).ljust(REPORT_SIZE, b"\x00")  # leading 0 = report ID
     if dev.write(report) < 0:
@@ -318,6 +326,9 @@ def run():
                 last_volume = volume
                 last_sent = time.monotonic()
             if usage != last_usage or heartbeat:
+                if heartbeat:
+                    # the dongle has no clock; the focus timer's daily count needs the date
+                    send(dev, [MSG_LOCAL_TIME, *local_epoch_seconds().to_bytes(4, "little")])
                 send(dev, [MSG_CLAUDE_USAGE, *usage])
                 if usage != last_usage:
                     log.info("usage 5h=%s 7d=%s", *("--" if u == UNKNOWN else f"{u}%" for u in usage))
