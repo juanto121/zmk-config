@@ -1,0 +1,102 @@
+{
+  "units": "mm",
+  "physical_fit_verified": false,
+  "parts": {
+    "tower_shell": {
+      "cad_valid": true,
+      "solid_count": 1,
+      "stl_watertight": true,
+      "stl_winding_consistent": true,
+      "triangles": 6590,
+      "volume_mm3": 80167.64,
+      "assembled_bounds_mm": [
+        [
+          -33.0,
+          -30.0,
+          3.2
+        ],
+        [
+          33.0,
+          30.0,
+          152.0
+        ]
+      ],
+      "print_size_mm": [
+        66.0,
+        60.0,
+        148.8
+      ]
+    },
+    "base_tray": {
+      "cad_valid": true,
+      "solid_count": 1,
+      "stl_watertight": true,
+      "stl_winding_consistent": true,
+      "triangles": 5244,
+      "volume_mm3": 12758.59,
+      "assembled_bounds_mm": [
+        [
+          -33.0,
+          -30.0,
+          -0.0
+        ],
+        [
+          33.0,
+          30.0,
+          8.2
+        ]
+      ],
+      "print_size_mm": [
+        66.0,
+        60.0,
+        8.2
+      ]
+    },
+    "rear_cover": {
+      "cad_valid": true,
+      "solid_count": 1,
+      "stl_watertight": true,
+      "stl_winding_consistent": true,
+      "triangles": 2644,
+      "volume_mm3": 8742.65,
+      "assembled_bounds_mm": [
+        [
+          -12.6,
+          -8.7,
+          20.0
+        ],
+        [
+          12.6,
+          12.8,
+          126.0
+        ]
+      ],
+      "print_size_mm": [
+        25.2,
+        106.0,
+        21.5
+      ]
+    }
+  },
+  "checks": {
+    "tower_shell_vs_base_tray_intersection_mm3": 0.0,
+    "tower_shell_vs_rear_cover_intersection_mm3": 0.0,
+    "base_tray_vs_rear_cover_intersection_mm3": 0.0,
+    "tower_shell_vs_display_envelope_intersection_mm3": 0.0,
+    "tower_shell_vs_usb_connector_intersection_mm3": 0.0,
+    "tower_shell_vs_controller_inset_keepout_mm3": 0.0,
+    "base_tray_vs_display_envelope_intersection_mm3": 0.0,
+    "base_tray_vs_usb_connector_intersection_mm3": 0.0,
+    "base_tray_vs_controller_inset_keepout_mm3": 0.0,
+    "rear_cover_vs_display_envelope_intersection_mm3": 0.0,
+    "rear_cover_vs_usb_connector_intersection_mm3": 0.0,
+    "rear_cover_vs_controller_inset_keepout_mm3": 0.0,
+    "usb_cable_corridor_intersection_mm3": 0.0,
+    "full_display_front_sightline_intersection_mm3": 0.0
+  },
+  "assembled_size_mm": [
+    66.0,
+    60.0,
+    152.0
+  ]
+}
