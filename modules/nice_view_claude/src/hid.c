@@ -19,18 +19,26 @@ typedef enum {
 
 static bool is_connected = false;
 
-static void on_disconnect_timer(struct k_timer *dummy) {
+// k_timer expiry functions run in interrupt context, where raising ZMK events is not
+// allowed (the display widget listeners take a k_mutex). The timers only queue work;
+// the events are raised from the system work queue.
+
+static void disconnect_work_handler(struct k_work *work) {
     LOG_INF("raise_connection_notification: false");
     is_connected = false;
     raise_is_connected_notification((struct is_connected_notification){.value = false});
 }
+
+static K_WORK_DEFINE(disconnect_work, disconnect_work_handler);
+
+static void on_disconnect_timer(struct k_timer *dummy) { k_work_submit(&disconnect_work); }
 
 K_TIMER_DEFINE(disconnect_timer, on_disconnect_timer, NULL);
 
 static uint8_t last_hid_volume = 0;
 static uint8_t last_raised_volume = 0;
 
-static void on_volume_timer(struct k_timer *dummy) {
+static void raise_volume_if_changed(void) {
     // prevent raising event with the same value multiple times
     if (last_raised_volume != last_hid_volume) {
         last_raised_volume = last_hid_volume;
@@ -38,6 +46,12 @@ static void on_volume_timer(struct k_timer *dummy) {
         raise_volume_notification((struct volume_notification){.value = last_hid_volume});
     }
 }
+
+static void volume_work_handler(struct k_work *work) { raise_volume_if_changed(); }
+
+static K_WORK_DEFINE(volume_work, volume_work_handler);
+
+static void on_volume_timer(struct k_timer *dummy) { k_work_submit(&volume_work); }
 
 K_TIMER_DEFINE(volume_timer, on_volume_timer, NULL);
 
@@ -69,7 +83,7 @@ static void process_raw_hid_data(uint8_t *data) {
         // debounce volume change events
         if (k_timer_status_get(&volume_timer) > 0 || k_timer_remaining_get(&volume_timer) == 0) {
             k_timer_start(&volume_timer, K_MSEC(150), K_NO_WAIT);
-            on_volume_timer(&volume_timer);
+            raise_volume_if_changed();
         }
         break;
 
