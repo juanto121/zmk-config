@@ -1,30 +1,36 @@
 {
   "units": "mm",
   "physical_fit_verified": false,
+  "layout": {
+    "lean_deg": 12.0,
+    "base_depth_mm": 53.5,
+    "pivot_y_mm": 9.561,
+    "controller_center_y_mm": 6.449999999999999
+  },
   "parts": {
     "tower_shell": {
       "cad_valid": true,
       "solid_count": 1,
       "stl_watertight": true,
       "stl_winding_consistent": true,
-      "triangles": 6590,
-      "volume_mm3": 80167.64,
+      "triangles": 7046,
+      "volume_mm3": 32335.3,
       "assembled_bounds_mm": [
         [
-          -33.0,
-          -30.0,
+          -15.0,
+          -26.75,
           3.2
         ],
         [
-          33.0,
-          30.0,
-          152.0
+          15.0,
+          26.75,
+          99.86
         ]
       ],
       "print_size_mm": [
-        66.0,
-        60.0,
-        148.8
+        30.0,
+        53.5,
+        96.66
       ]
     },
     "base_tray": {
@@ -32,23 +38,23 @@
       "solid_count": 1,
       "stl_watertight": true,
       "stl_winding_consistent": true,
-      "triangles": 5244,
-      "volume_mm3": 12758.59,
+      "triangles": 5212,
+      "volume_mm3": 5181.02,
       "assembled_bounds_mm": [
         [
-          -33.0,
-          -30.0,
+          -15.0,
+          -26.75,
           -0.0
         ],
         [
-          33.0,
-          30.0,
+          15.0,
+          26.75,
           8.2
         ]
       ],
       "print_size_mm": [
-        66.0,
-        60.0,
+        30.0,
+        53.5,
         8.2
       ]
     },
@@ -58,23 +64,23 @@
       "stl_watertight": true,
       "stl_winding_consistent": true,
       "triangles": 2644,
-      "volume_mm3": 8742.65,
+      "volume_mm3": 6028.76,
       "assembled_bounds_mm": [
         [
-          -12.6,
-          -8.7,
-          20.0
+          -10.4,
+          -9.85,
+          14.5
         ],
         [
-          12.6,
-          12.8,
-          126.0
+          10.4,
+          26.75,
+          82.48
         ]
       ],
       "print_size_mm": [
-        25.2,
-        106.0,
-        21.5
+        20.8,
+        69.5,
+        29.55
       ]
     }
   },
@@ -84,19 +90,26 @@
     "base_tray_vs_rear_cover_intersection_mm3": 0.0,
     "tower_shell_vs_display_envelope_intersection_mm3": 0.0,
     "tower_shell_vs_usb_connector_intersection_mm3": 0.0,
+    "tower_shell_vs_display_header_cables_intersection_mm3": 0.0,
+    "tower_shell_vs_controller_pcb_intersection_mm3": 0.0,
     "tower_shell_vs_controller_inset_keepout_mm3": 0.0,
     "base_tray_vs_display_envelope_intersection_mm3": 0.0,
     "base_tray_vs_usb_connector_intersection_mm3": 0.0,
+    "base_tray_vs_display_header_cables_intersection_mm3": 0.0,
+    "base_tray_vs_controller_pcb_intersection_mm3": 0.0,
     "base_tray_vs_controller_inset_keepout_mm3": 0.0,
     "rear_cover_vs_display_envelope_intersection_mm3": 0.0,
     "rear_cover_vs_usb_connector_intersection_mm3": 0.0,
+    "rear_cover_vs_display_header_cables_intersection_mm3": 0.0,
+    "rear_cover_vs_controller_pcb_intersection_mm3": 0.0,
     "rear_cover_vs_controller_inset_keepout_mm3": 0.0,
     "usb_cable_corridor_intersection_mm3": 0.0,
+    "rear_cover_unsupported_edge_mm3": 0.0,
     "full_display_front_sightline_intersection_mm3": 0.0
   },
   "assembled_size_mm": [
-    66.0,
-    60.0,
-    152.0
+    30.0,
+    53.5,
+    99.86
   ]
 }

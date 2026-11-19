@@ -1,12 +1,18 @@
 # Sauron tower display-dongle case
 
 A Barad-dûr-inspired desk enclosure for this repository's ZMK dongle: angular
-buttresses, a tapered shaft, two tall inward-curving crown talons and two shorter
-rear spires. The existing firmware's animated eye appears in the portrait screen.
+buttresses, a tapered shaft, and a crown of two great horns that sweep in over a
+stepped battlement roof ringed with teeth and rear spires. The existing
+firmware's animated eye appears in the portrait screen.
 
-**Assembled size: 66 × 60 × 152 mm. All CAD/STL dimensions are millimetres.**
+**Assembled size: 30 × 53.5 × 99.9 mm (width × depth × height). All CAD/STL
+dimensions are millimetres.** The 30 mm width (front view, ornaments included)
+and 100 mm height are hard limits checked by the build.
+Everything above the base leans back **12°** (`LEAN_DEG`), so the screen faces
+slightly upward. The base depth is calculated so the whole leaned tower stands
+over the base; it is deeper than the 40.6 mm the controller alone needs.
 The nRF52840 controller lies flat in the base, parallel to the desk. The nice!view
-stands vertically at **90° to the controller**, facing forward. USB-C exits the
+sits in the leaned head, facing forward and 12° upward. USB-C exits the
 rear at the bottom, through a cable opening centred 8 mm above the desk.
 
 ![CAD assembly and electronics orientation](preview.png)
@@ -17,8 +23,8 @@ rear at the bottom, through a cable opening centred 8 mm above the desk.
 | --- | --- |
 | `sauron-dongle-print-pack.zip` | Complete pack: STLs, STEP files, source, instructions and previews |
 | `stl/tower_shell.stl` | Main tower and base shell; print upright as exported |
-| `stl/base_tray.stl` | Removable bottom, controller saddles, side guides and end stops |
-| `stl/rear_cover.stl` | Removable rear panel with display support pads and lateral fences |
+| `stl/base_tray.stl` | Removable bottom, controller saddles and end stops |
+| `stl/rear_cover.stl` | Removable rear panel (20.8 mm wide) with display support pads and lateral fences |
 | `stl/display_fit_gauge.stl` | Small flat coupon to check the full display opening first |
 | `cad/assembly.step` | Three enclosure parts in their assembled positions |
 | `cad/assembly_with_hardware.step` | Assembly plus simplified electronics envelopes for inspection |
@@ -42,15 +48,16 @@ These dimensions come from the manufacturers' mechanical drawings, checked
 | --- | --- |
 | ProMicro nRF52840 / SuperMini PCB | **33.00 × 17.78 mm**; pin-row length 30.48 mm |
 | Controller design footprint | **33 × 18 mm**, allowing for clone variation |
-| Controller guide clearance | **0.40 mm per side**, **0.60 mm at each end** |
+| Controller guide clearance | **0.40 mm per side** (to the screw bosses), **0.60 mm at each end** |
 | Controller PCB underside | 6.4 mm above the desk; PCB thickness assumed 1.0 mm |
 | Controller central component keepout | 2.0 mm below PCB; 3.4 mm above its assumed top |
 | USB cable opening | **14 × 9 mm**, centred at Z = 8 mm; accommodates many cable mouldings |
 | nice!view PCB | **36 × 14 mm**; drawing notes V-cut can add **0.1–0.2 mm** |
 | nice!view section | 0.9 mm display above 1.0 mm PCB, with up to 1.0 mm rear components; **2.9 mm** overall envelope |
 | Display aperture | **15.2 × 37.2 mm**; exposes the whole module, including the pin end |
-| Display position | PCB long axis vertical, lower end Z = 86 mm, upper end Z = 122 mm |
+| Display position | PCB long axis along the leaned shaft; lower edge 27.5 mm above the base top, measured along the rear cover |
 | Display support | Four narrow rear edge pads, with **2 mm removable insulating foam** between pad and PCB |
+| Display header clearance | **25 mm** straight back from the PCB at the pin end: 18 mm pin header + Dupont plugs, 7 mm cable bend. Built clearance is 25.5 mm to the rear cover |
 | Rear panel / base floor | 2.8 mm / 3.2 mm |
 
 Sources:
@@ -79,11 +86,13 @@ The simplified hardware STEP objects are fit envelopes, not vendor-exact models.
 - 0.4 mm nozzle, 0.16–0.20 mm layers, 4 walls, 5 top/bottom layers, 15–20% infill.
 - **Tower:** upright on its base rim. Use a 5–8 mm brim. Add removable supports
   inside the open base under its roof; these can be pulled out through the bottom.
-  Inspect the 15.2 mm display-window bridge in your slicer and support it if needed.
-  Keep support out of the screw pilots. Crown talons taper to 1.6 mm tips.
+  The 12° lean itself prints without support. Inspect the 15.2 mm display-window
+  bridge and the inward-curving horn tips in your slicer; the last few millimetres
+  of each horn overhang steeply and may need tree supports. Keep support out of
+  the screw pilots. Horn tips taper to 0.4 mm.
 - **Tray:** flat underside down, no supports.
 - **Rear cover:** exported flat outer face down; its display supports point upward.
-  No supports normally needed. Print size is approximately 25.2 × 106 × 21.5 mm.
+  No supports normally needed. Print size is approximately 20.8 × 69.5 × 29.6 mm.
 - **Gauge:** flat as exported, no supports. Check that the module passes through
   the rectangular opening without scraping glass, PCB edges or the flex tail.
 - Prefer slicer elephant-foot compensation around the mating surfaces. Remove
@@ -97,10 +106,12 @@ You need:
 
 - One USB-C ProMicro nRF52840 / SuperMini, approximately 33 × 18 mm.
 - One standard nice!view, 36 × 14 mm.
-- Five flexible hookup wires, approximately 120–150 mm each, trimmed to suit routing.
-- **Six M2.5 × 8 mm low-profile button-head screws**: four for the base and two
-  for the rear panel. Head diameter must be ≤ 4.8 mm and head height ≤ 1.7 mm.
-  These thread directly into printed 2.1 mm pilots; no heat-set inserts are required.
+- Five flexible hookup wires, approximately 120–150 mm each, trimmed to suit routing,
+  or five Dupont jumper cables on a pin header soldered to the nice!view.
+- **Six M2 × 8 mm low-profile button-head screws**: four for the base and two
+  for the rear panel. Head diameter must be ≤ 4.0 mm and head height ≤ 1.5 mm.
+  These thread directly into printed 1.6 mm pilots; no heat-set inserts are required.
+  (The 30 mm base has no room for M2.5 bosses beside the controller.)
 - Removable insulating foam/tape: 2 mm thick for the display support pads, and
   small thin pieces for securing the controller to its plastic saddles.
 - Optional rubber feet beneath the base.
@@ -117,30 +128,33 @@ The five display connections, matching the repository README:
 
 1. **Test the footprints.** Print the base tray and display fit gauge first. Confirm
    the actual controller, its solder joints and USB cable can sit in the tray.
-   This design uses directly soldered wires, without tall pin headers, an adapter
-   PCB, battery or a stacked controller/display assembly.
+   The display end takes either directly soldered wires or a straight pin header
+   with Dupont plugs: the shaft leaves 25 mm behind the display's pin end. There
+   is no room for an adapter PCB, battery or a stacked controller/display assembly.
 2. Wire the display using the wiring table above.
    With display pins at the lower end, leave enough service loop to pull the rear
    panel away without tugging on the solder joints. Check the portrait image before
    fixing the display in place; if your firmware orientation differs, adjust that
    orientation before assembly.
 3. Seat the controller **component side upward**, with USB-C pointing rearward
-   (+Y). Four plastic edge saddles support its underside at Z = 6.4 mm; side
-   guides and split end stops locate it. Use small pieces of removable tape at
+   (+Y). Four plastic edge saddles support its underside at Z = 6.4 mm; the
+   four screw bosses beside its long edges and the split end stops locate it. Use small pieces of removable tape at
    suitable bare edges to prevent lifting. Keep underside solder and components
    clear of the saddles. Do not rely on the USB connector to retain the board.
 4. Attach the nice!view's **bare rear PCB edges** to the four narrow support pads
-   on the inside of the rear cover, using 2 mm insulating foam. Pad centres are
-   X = ±6.2 mm and Z = 95/113 mm in assembly coordinates. Align its lower PCB edge
-   at Z = 86 mm. The two side fences leave 0.3 mm clearance per side. Apply no
-   clamping force or adhesive to the glass, flex tail or populated components.
+   on the inside of the rear cover, using 2 mm insulating foam. Pads touch the
+   PCB between X = ±5.5 and ±7.0 mm, 36.5 and 54.5 mm above the cover's bottom
+   edge. Align the display's lower PCB edge 27.5 mm above that edge. The two side
+   fences leave 0.3 mm clearance per side. Apply no clamping force or adhesive to
+   the glass, flex tail or populated components.
 5. Route the five wires up the front of the hollow shaft. The rear screw crossbars
-   occupy Y = +2 to +10 mm; the passage in front of them remains open. Keep a
-   service loop in the base and avoid pinching it under the rear panel.
+   sit 6 mm and 64.7 mm above the cover's bottom edge and reach 8 mm in from it;
+   route the cables in front of the lower one. Keep a service loop in the base and
+   avoid pinching it under the rear panel.
 6. Fit the rear panel, keeping the display clear of the front opening. Install its
-   two M2.5 × 8 mm screws from the rear. Start screws gently by hand into the
+   two M2 × 8 mm screws from the rear. Start screws gently by hand into the
    printed pilots and stop when seated.
-7. Close the base with the tray and four M2.5 × 8 mm screws from underneath.
+7. Close the base with the tray and four M2 × 8 mm screws from underneath.
    Test USB insertion and removal, Bluetooth reception, screen visibility and
    bootloader entry. Remove the tray for physical reset access; the large rear
    panel gives solder/wiring access. No clone-specific reset-button hole is assumed.
@@ -158,13 +172,16 @@ python3 -m venv /tmp/sauron-cad
 
 The main adjustable values are at the top of `build_case.py`: controller width and
 length, PCB seating height, USB opening size/height, display dimensions, display
-support foam thickness, and screw pilot size. The tower exterior is intentionally
-fixed; larger hardware changes also require reviewing its pockets and braces.
+support foam thickness, header clearance, screw sizes, the lean angle
+`LEAN_DEG`, and the overall `TOWER_W` / `TOWER_H` limits. Base depth follows from
+the lean automatically. The tower's profile is laid out for these values;
+larger hardware changes also require reviewing its pockets and braces.
 Run the geometric checks again after edits. Rebuilding replaces generated CAD,
 STLs, previews and the validation report; re-run `package.py` for an updated ZIP.
 
 The builder checks CAD validity, one connected solid per print part, watertight and
-consistently wound STL meshes, part-to-part interference, electronics keepouts and
-the rear USB cable corridor. `validation.json` records the measured results.
+consistently wound STL meshes, part-to-part interference, electronics keepouts
+(including the display header and cables), the rear USB cable corridor, and the
+30 mm width / 100 mm height limits. `validation.json` records the measured results.
 These checks establish digital geometry integrity, not printer tolerances,
 mechanical durability or a physically tested fit.

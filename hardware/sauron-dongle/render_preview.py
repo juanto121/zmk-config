@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import Rectangle, Polygon, FancyArrowPatch
 import numpy as np
 import trimesh
+import json
+
+import build_case as case
 
 ROOT = Path(__file__).resolve().parent
 MESHES = ROOT/'cad'/'preview_meshes'
@@ -107,17 +110,36 @@ def show_scene(fig,rect,scene,azim=-68,elev=15):
     return ax
 
 
+LAYOUT=json.loads((ROOT/'validation.json').read_text())['layout']
+PIVOT=LAYOUT['pivot_y_mm']
+
+
+def W(x,y,z):
+    """World point of a local (upright-frame) point of the leaned upper part."""
+    wy,wz=case.to_world(y,z,PIVOT)
+    return (x,wy,wz)
+
+
+def stroke_local(ax,xs,zs,y,width=.12):
+    for x1,z1,x2,z2 in zip(xs[:-1],zs[:-1],xs[1:],zs[1:]):
+        length=np.hypot(x2-x1,z2-z1)
+        if not length: continue
+        dx=-(z2-z1)/length*width/2; dz=(x2-x1)/length*width/2
+        flat_face(ax,[W(x1+dx,y,z1+dz),W(x2+dx,y,z2+dz),
+                      W(x2-dx,y,z2-dz),W(x1-dx,y,z1-dz)],'#444e48')
+
+
 def front_screen(ax):
     # Illustrative content only; the actual firmware draws its own monochrome UI.
-    y=-9.47
-    screen = np.array([[-5.4,y,90.6],[5.4,y,90.6],[5.4,y,115.9],[-5.4,y,115.9]])
-    flat_face(ax,screen,'#c8ccbc')
-    for z,length in [(113.7,7.5),(111.8,6.8),(108.8,7.9),(106.8,7.1)]:
-        stroke(ax,[-4.2,-4.2+length],[z,z],y-.04,.12)
+    y=case.DISPLAY_GLASS_Y-.07
+    b=case.DISPLAY_BOTTOM
+    flat_face(ax,[W(-5.4,y,b+4.6),W(5.4,y,b+4.6),W(5.4,y,b+29.9),W(-5.4,y,b+29.9)],'#c8ccbc')
+    for dz,length in [(27.7,7.5),(25.8,6.8),(22.8,7.9),(20.8,7.1)]:
+        stroke_local(ax,[-4.2,-4.2+length],[b+dz,b+dz],y-.04,.12)
     t=np.linspace(0,2*np.pi,100)
     # A lidded eye low in the portrait window, matching the README's layout.
-    stroke(ax,4.4*np.cos(t),98.3+2.2*np.sin(t)*np.abs(np.sin(t))**.25,y-.05,.16)
-    stroke(ax,[0,0],[96.5,100.1],y-.06,.32)
+    stroke_local(ax,4.4*np.cos(t),b+12.3+2.2*np.sin(t)*np.abs(np.sin(t))**.25,y-.05,.16)
+    stroke_local(ax,[0,0],[b+10.5,b+14.1],y-.06,.32)
 
 
 def render():
@@ -134,37 +156,52 @@ def render():
 
     ax2=Scene()
     draw_mesh(ax2,'tower_shell','#81909a')
-    draw_mesh(ax2,'base_tray','#5c6c76',offset=(0,0,-22))
-    draw_mesh(ax2,'rear_cover','#72838c',offset=(0,45,0))
+    draw_mesh(ax2,'base_tray','#5c6c76',offset=(0,0,-16))
+    lift=(0,30*case.COS,-30*case.SIN)   # pulled off along the leaned cover's normal
+    draw_mesh(ax2,'rear_cover','#72838c',offset=lift)
     draw_mesh(ax2,'controller_pcb','#3e9670')
     draw_mesh(ax2,'usb_connector','#aeb7bb')
-    draw_mesh(ax2,'display_envelope','#e2b169',offset=(0,45,0))
+    draw_mesh(ax2,'display_envelope','#e2b169',offset=lift)
     show_scene(fig,[.49,.47,.47,.36],ax2,azim=55,elev=16)
     fig.text(.53,.84,'SERVICEABLE THREE-PART CASE',fontsize=12,fontweight='bold',color=INK)
-    fig.text(.53,.415,'Rear cover carries the upright display.\nBase tray carries the horizontal controller.',fontsize=10,color='#63707a',linespacing=1.6)
+    fig.text(.53,.415,'Rear cover carries the leaned-back display.\nBase tray carries the horizontal controller.',fontsize=10,color='#63707a',linespacing=1.6)
 
     ax3=fig.add_axes([.55,.10,.37,.21])
-    ax3.set_aspect('equal'); ax3.axis('off'); ax3.set_xlim(-38,42); ax3.set_ylim(-8,158)
-    # True side orientation diagram, Y horizontal / Z vertical.
-    ax3.add_patch(Polygon([(-30,0),(30,0),(30,7),(23,20),(10,20),(10,126),(-13,126),(-13,84),(-12,58),(-20,20),(-30,7)],
+    half=LAYOUT['base_depth_mm']/2; b=case.DISPLAY_BOTTOM
+    def side(pts): return [case.to_world(y,z,PIVOT) for y,z in pts]
+    ax3.set_aspect('equal'); ax3.axis('off'); ax3.set_xlim(-half-30,half+34); ax3.set_ylim(-8,case.TOWER_H+4)
+    # True side orientation diagram, Y horizontal / Z vertical. Upper part leaned.
+    back=case.REAR_Y+case.COVER_T
+    ax3.add_patch(Polygon(side([(-14,case.UPPER_BOTTOM),(-12.6,b-4),(case.FRONT_Y-.6,b-1.5),
+                                (case.FRONT_Y-1,case.TOP_Z),(case.FRONT_Y+7.5,case.TOP_Z+4.5),
+                                (back-7.5,case.TOP_Z+4.5),(back,case.TOP_Z),(back,case.UPPER_BOTTOM)]),
                           facecolor='#d9dedb',edgecolor='#89969c',lw=.8))
-    ax3.add_patch(Rectangle((-8.5,6.4),33,1,color='#3e9670'))
-    ax3.add_patch(Rectangle((18.25,5.3),7.5,3.3,color='#89969c'))
-    ax3.add_patch(Rectangle((-9.4,86),2.9,36,color='#d99a4e'))
-    ax3.plot([-5,-5,6],[25,42,42],color='#63707a',lw=.8)
-    ax3.text(8,40,'90°',fontsize=9,color=INK)
-    ax3.annotate('USB →',xy=(26,7),xytext=(0,-5),fontsize=8,color=INK)
-    ax3.text(15,99,'36 × 14 mm\nnice!view',fontsize=8,color=INK)
-    ax3.text(-37,53,'33 × 18 mm\nnRF52840\nflat in base',fontsize=8,color=INK)
-    fig.text(.53,.355,'66 × 60 × 152 mm assembled',fontsize=16,fontweight='bold',color=INK)
+    ax3.add_patch(Polygon([(-half,0),(half,0),(half,9),(half-.8,case.BASE_TOP),
+                           (-half+.8,case.BASE_TOP),(-half,9)],
+                          facecolor='#d9dedb',edgecolor='#89969c',lw=.8))
+    mcu=LAYOUT['controller_center_y_mm']
+    ax3.add_patch(Rectangle((mcu-case.MCU_L/2,case.MCU_BOTTOM),case.MCU_L,1,color='#3e9670'))
+    ax3.add_patch(Rectangle((mcu+case.MCU_L/2-6.25,case.MCU_BOTTOM-1.1),7.5,3.3,color='#89969c'))
+    g=case.DISPLAY_GLASS_Y
+    ax3.add_patch(Polygon(side([(g,b),(g+case.DISPLAY_T,b),(g+case.DISPLAY_T,b+case.DISPLAY_L),(g,b+case.DISPLAY_L)]),
+                          color='#d99a4e'))
+    pb=case.DISPLAY_PCB_BACK_Y
+    ax3.add_patch(Polygon(side([(pb,b),(pb+case.HEADER_CLEAR,b),(pb+case.HEADER_CLEAR,b+case.HEADER_H),(pb,b+case.HEADER_H)]),
+                          facecolor='none',edgecolor='#d99a4e',lw=.8,ls='--'))
+    ax3.annotate('USB →',xy=(half,7),xytext=(half-14,-6),fontsize=8,color=INK)
+    ax3.text(half+3,b+22,f'36 × 14 mm nice!view\nleaned back {case.LEAN_DEG:g}°',fontsize=8,color=INK)
+    ax3.text(half+3,b-2,f'{case.HEADER_CLEAR:.0f} mm header\n+ cable bend',fontsize=8,color=INK)
+    ax3.text(-half-29,4,'33 × 18 mm\nnRF52840\nflat in base',fontsize=8,color=INK)
+    size=json.loads((ROOT/'validation.json').read_text())['assembled_size_mm']
+    fig.text(.53,.355,' × '.join(f'{round(v,1):g}' for v in size)+' mm assembled',fontsize=16,fontweight='bold',color=INK)
     fig.text(.53,.32,'USB-C at the rear · portrait screen at the front',fontsize=10,color='#63707a')
     fig.text(.055,.04,'PRINT AT 100%  ·  mm  ·  3 STLs + fit gauge  ·  STEP + parametric source included',fontsize=10,color=INK)
     fig.savefig(ROOT/'preview.png',dpi=160,facecolor=PAPER)
     plt.close(fig)
 
     # Separate large front/rear view for checking openings and assembly.
-    fig=plt.figure(figsize=(12,10),facecolor=PAPER)
-    for i,(az,title) in enumerate([(-90,'FRONT / DISPLAY'),(90,'REAR / USB + COVER')]):
+    fig=plt.figure(figsize=(16,10),facecolor=PAPER)
+    for i,(az,title) in enumerate([(-90,'FRONT / DISPLAY'),(0,'SIDE / LEAN'),(90,'REAR / USB + COVER')]):
         ax=Scene()
         for name in ['tower_shell','base_tray','rear_cover']:
             draw_mesh(ax,name,'#6d7d87')
@@ -172,7 +209,7 @@ def render():
         draw_mesh(ax,'usb_connector','#aeb7bb')
         draw_mesh(ax,'display_envelope','#28383b')
         if i==0: front_screen(ax)
-        image_ax=show_scene(fig,[.03+i*.49,.04,.45,.87],ax,azim=az,elev=0)
+        image_ax=show_scene(fig,[.02+i*.33,.04,.30,.87],ax,azim=az,elev=0)
         image_ax.set_title(title,fontsize=12,color=INK,pad=15)
     fig.savefig(ROOT/'orthographic.png',dpi=160,facecolor=PAPER,bbox_inches='tight')
     plt.close(fig)
