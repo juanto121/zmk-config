@@ -28,38 +28,21 @@ The nice!view on the dongle, read top to bottom:
 
 ```
 ┌────────────────┐
-│ L 82%      USB │  ① keyboard halves' battery · output (USB / Bluetooth)
-│ R 79%          │
-├────────────────┤
-│    🔊 44%      │  ② Mac output volume
-│ 5h        19%  │     Claude: % of the 5-hour usage limit used
-│ 7d         4%  │     Claude: % of the weekly usage limit used
-├────────────────┤
-│   /\/\/\/\/\   │  ③ flaming eye looking around, or the focus timer
+│   /\/\/\/\/\   │  ① flaming eye looking around, or the focus timer
 │  <(:::|::::)>  │     while it runs: FOCUS / BREAK / LONG BRK + mm:ss
 │   \/\/\/\/\/   │
 │    Today 3     │     focus sessions completed today
+├────────────────┤
+│ 5h        19%  │  ② Claude: % of the 5-hour usage limit used
+│ 7d         4%  │     Claude: % of the weekly usage limit used
+│    🔊 44%      │     Mac output volume
+├────────────────┤
+│ L 82%      USB │  ③ keyboard halves' battery · output (USB / Bluetooth)
+│ R 79%          │
 └────────────────┘
 ```
 
-**① Status**
-- `L` / `R`: battery of the left and right halves. Shows `--` until a half has reported a level.
-- Output symbol:
-  - USB symbol: keystrokes go over the USB cable.
-  - Wi-Fi-style symbol: keystrokes go over Bluetooth and the current profile is connected.
-  - ✕: the current Bluetooth profile is paired but not connected.
-  - ⚙: the current Bluetooth profile is empty, ready to pair.
-- If `L` and `R` are swapped, set `CONFIG_NICE_VIEW_CLAUDE_SWAP_PERIPHERALS=y` in
-  `config/cradio_dongle.conf`. The dongle numbers the halves by pairing order, not by side.
-
-**② Data from the Mac** (sent by `host/claude_usage_hid.py` over Raw HID)
-- Volume: the Mac's output volume. A mute icon appears at 0%.
-- `5h` and `7d`: how much of the Claude plan's 5-hour and weekly limits has been used.
-  - `--%` means no data yet.
-  - A limit shows `0%` once its reset time passes.
-- If nothing arrives from the Mac for 65 s, these three lines are replaced by **"HID not found"**.
-
-**③ Eye / focus timer**
+**① Eye / focus timer**
 - Normally: a flaming, lidded eye.
   - Its slit pupil wanders to random spots, pauses, and searches again.
   - The flames flicker. The animation runs at 8 fps.
@@ -83,6 +66,23 @@ The nice!view on the dongle, read top to bottom:
   | `CONFIG_NICE_VIEW_CLAUDE_BREAK_MINUTES` | 5 |
   | `CONFIG_NICE_VIEW_CLAUDE_LONG_BREAK_MINUTES` | 30 |
   | `CONFIG_NICE_VIEW_CLAUDE_LONG_BREAK_EVERY` | 4 |
+
+**② Data from the Mac** (sent by `host/claude_usage_hid.py` over Raw HID)
+- `5h` and `7d`: how much of the Claude plan's 5-hour and weekly limits has been used.
+  - `--%` means no data yet.
+  - A limit shows `0%` once its reset time passes.
+- Volume: the Mac's output volume. A mute icon appears at 0%.
+- If nothing arrives from the Mac for 65 s, these three lines are replaced by **"HID not found"**.
+
+**③ Status**
+- `L` / `R`: battery of the left and right halves. Shows `--` until a half has reported a level.
+- Output symbol:
+  - USB symbol: keystrokes go over the USB cable.
+  - Wi-Fi-style symbol: keystrokes go over Bluetooth and the current profile is connected.
+  - ✕: the current Bluetooth profile is paired but not connected.
+  - ⚙: the current Bluetooth profile is empty, ready to pair.
+- If `L` and `R` are swapped, set `CONFIG_NICE_VIEW_CLAUDE_SWAP_PERIPHERALS=y` in
+  `config/cradio_dongle.conf`. The dongle numbers the halves by pairing order, not by side.
 
 ## Keymap
 

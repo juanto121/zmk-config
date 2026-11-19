@@ -29,10 +29,11 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #include <zmk/split/central.h>
 #endif
 
+// Creation (and so draw) order: later canvases cover earlier ones where they overlap.
 enum widget_children {
     WIDGET_TOP = 0,
-    WIDGET_HID,
     WIDGET_MIDDLE,
+    WIDGET_HID,
 };
 
 static sys_slist_t widgets = SYS_SLIST_STATIC_INIT(&widgets);
@@ -81,7 +82,13 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     lv_canvas_draw_rect(canvas, 0, 0, CANVAS_SIZE, CANVAS_SIZE, &rect_black_dsc);
 
     // Keyboard halves' battery, two 12px rows on the left: "L 82%" / "R 79%".
-    // Only ~28px of this canvas is visible (the HID canvas overlaps the rest).
+    // Vertically this canvas sits at the bottom of the screen and the HID canvas
+    // covers its first 40 rows, so only the last 28 are visible.
+#ifdef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
+    const lv_coord_t battery_y = 0;
+#else
+    const lv_coord_t battery_y = 40;
+#endif
     lv_draw_label_dsc_t label_battery;
     init_label_dsc(&label_battery, LVGL_FOREGROUND, &lv_font_montserrat_12, LV_TEXT_ALIGN_LEFT);
     char battery_text[8];
@@ -90,13 +97,13 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     } else {
         snprintf(battery_text, sizeof(battery_text), "L %u%%", state->battery_left);
     }
-    lv_canvas_draw_text(canvas, 0, 0, 44, &label_battery, battery_text);
+    lv_canvas_draw_text(canvas, 0, battery_y, 44, &label_battery, battery_text);
     if (state->battery_right == 0) {
         strcpy(battery_text, "R --");
     } else {
         snprintf(battery_text, sizeof(battery_text), "R %u%%", state->battery_right);
     }
-    lv_canvas_draw_text(canvas, 0, 14, 44, &label_battery, battery_text);
+    lv_canvas_draw_text(canvas, 0, battery_y + 14, 44, &label_battery, battery_text);
 
     // Draw output status
     char output_text[10] = {};
@@ -121,7 +128,7 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
 #ifdef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
     lv_canvas_draw_text(canvas, 0, 50, CANVAS_SIZE, &label_dsc, output_text);
 #else
-    lv_canvas_draw_text(canvas, 0, 0, CANVAS_SIZE, &label_dsc, output_text);
+    lv_canvas_draw_text(canvas, 0, battery_y, CANVAS_SIZE, &label_dsc, output_text);
 
     // Rotate canvas
     finish_canvas(canvas, cbuf);
@@ -168,10 +175,10 @@ static void draw_hid(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
         } else {
             sprintf(volume, LV_SYMBOL_VOLUME_MID " %i%%", state->volume);
         }
-        lv_canvas_draw_text(canvas, 0, 0, CANVAS_SIZE, &label_volume, volume);
-
-        draw_usage_row(canvas, 24, "5h", state->usage_five_hour);
-        draw_usage_row(canvas, 47, "7d", state->usage_seven_day);
+        // Claude usage first, volume underneath
+        draw_usage_row(canvas, 0, "5h", state->usage_five_hour);
+        draw_usage_row(canvas, 23, "7d", state->usage_seven_day);
+        lv_canvas_draw_text(canvas, 0, 47, CANVAS_SIZE, &label_volume, volume);
     } else {
         lv_draw_label_dsc_t label_big;
         init_label_dsc(&label_big, LVGL_FOREGROUND, &lv_font_montserrat_22, LV_TEXT_ALIGN_CENTER);
@@ -422,25 +429,31 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     lv_obj_t *top = lv_canvas_create(widget->obj);
     lv_canvas_set_buffer(top, widget->cbuf, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
 
-    lv_obj_t *hid = lv_canvas_create(widget->obj);
-    lv_canvas_set_buffer(hid, widget->cbuf_hid, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
-
     lv_obj_t *middle = lv_canvas_create(widget->obj);
     lv_canvas_set_buffer(middle, widget->cbuf2, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
+
+    lv_obj_t *hid = lv_canvas_create(widget->obj);
+    lv_canvas_set_buffer(hid, widget->cbuf_hid, CANVAS_SIZE, CANVAS_SIZE, LV_IMG_CF_TRUE_COLOR);
 
 #ifdef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
     lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 46, 0);
     lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 20, -12);
-#elif IS_ENABLED(CONFIG_NICE_VIEW_CLAUDE_UPSIDE_DOWN)
-    // Mirror image of the layout below; draw order (and so overlap) is unchanged.
-    lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
-    lv_obj_align(hid, LV_ALIGN_TOP_RIGHT, -64, 0);
-    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 4, 0);
 #else
-    lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
+    // Read top to bottom: eye (rows 0-63), HID canvas (64-131: usage, volume),
+    // battery (132-159). The HID canvas is drawn last and covers the eye
+    // canvas's 4 blank bottom rows and the battery canvas's first 40.
+#if IS_ENABLED(CONFIG_NICE_VIEW_CLAUDE_UPSIDE_DOWN)
+    // The top of the screen is at x = 0.
+    lv_obj_align(middle, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 64, 0);
-    lv_obj_align(middle, LV_ALIGN_TOP_LEFT, -4, 0);
+    lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
+#else
+    // The top of the screen is at x = 160.
+    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 0, 0);
+    lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 28, 0);
+    lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
+#endif
 #endif
 
     eye_init(&eye, k_cycle_get_32());
