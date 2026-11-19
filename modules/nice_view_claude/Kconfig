@@ -17,6 +17,13 @@ config NICE_VIEW_CLAUDE_HORIZONTAL
     bool "Horizontal view"
     default n
 
+config NICE_VIEW_CLAUDE_UPSIDE_DOWN
+    bool "Rotate the dongle screen 180 degrees"
+    depends on !NICE_VIEW_CLAUDE_HORIZONTAL
+    help
+      For a nice!view mounted upside down. Every canvas is turned a further
+      180 degrees and the canvases are mirrored across the screen.
+
 config NICE_VIEW_CLAUDE_INVERTED
     bool "Invert widget colors"
 

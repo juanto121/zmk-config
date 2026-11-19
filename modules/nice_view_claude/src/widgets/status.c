@@ -50,6 +50,21 @@ struct output_status_state {
 BUILD_ASSERT(sizeof(lv_color_t) == 1, "eye rendering assumes 1-byte (1-bit) colours");
 static struct eye_state eye;
 
+// Rotates a finished canvas into place: 90 degrees, plus another 180 when the
+// screen is mounted upside down. A square canvas with 1-byte pixels turns 180
+// degrees by reversing its buffer, which keeps the 90-degree pixel alignment.
+static void finish_canvas(lv_obj_t *canvas, lv_color_t cbuf[]) {
+    rotate_canvas(canvas, cbuf);
+#if IS_ENABLED(CONFIG_NICE_VIEW_CLAUDE_UPSIDE_DOWN)
+    for (int i = 0, j = CANVAS_SIZE * CANVAS_SIZE - 1; i < j; i++, j--) {
+        lv_color_t tmp = cbuf[i];
+        cbuf[i] = cbuf[j];
+        cbuf[j] = tmp;
+    }
+    lv_obj_invalidate(canvas);
+#endif
+}
+
 static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_state *state) {
     lv_obj_t *canvas = lv_obj_get_child(widget, WIDGET_TOP);
 
@@ -109,7 +124,7 @@ static void draw_top(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
     lv_canvas_draw_text(canvas, 0, 0, CANVAS_SIZE, &label_dsc, output_text);
 
     // Rotate canvas
-    rotate_canvas(canvas, cbuf);
+    finish_canvas(canvas, cbuf);
 #endif
 }
 
@@ -168,7 +183,7 @@ static void draw_hid(lv_obj_t *widget, lv_color_t cbuf[], const struct status_st
 
 #ifndef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
     // Rotate canvas
-    rotate_canvas(canvas, cbuf);
+    finish_canvas(canvas, cbuf);
 #endif
 }
 
@@ -222,7 +237,7 @@ static void draw_middle(lv_obj_t *widget, lv_color_t cbuf[], const struct status
 
 #ifndef CONFIG_NICE_VIEW_CLAUDE_HORIZONTAL
     // Rotate canvas
-    rotate_canvas(canvas, cbuf);
+    finish_canvas(canvas, cbuf);
 #endif
 }
 
@@ -417,6 +432,11 @@ int zmk_widget_status_init(struct zmk_widget_status *widget, lv_obj_t *parent) {
     lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 46, 0);
     lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 20, -12);
+#elif IS_ENABLED(CONFIG_NICE_VIEW_CLAUDE_UPSIDE_DOWN)
+    // Mirror image of the layout below; draw order (and so overlap) is unchanged.
+    lv_obj_align(top, LV_ALIGN_TOP_LEFT, 0, 0);
+    lv_obj_align(hid, LV_ALIGN_TOP_RIGHT, -64, 0);
+    lv_obj_align(middle, LV_ALIGN_TOP_RIGHT, 4, 0);
 #else
     lv_obj_align(top, LV_ALIGN_TOP_RIGHT, 0, 0);
     lv_obj_align(hid, LV_ALIGN_TOP_LEFT, 64, 0);
